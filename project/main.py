@@ -131,15 +131,22 @@ def main():
     cv.imshow("Warped", cv.resize(warped, (width, height)))
     cv.waitKey(0)
 
-    warpedAgain = fourPointTransform(orig, cnt.reshape(4, 2) * ratio)
-    # convert the warped image to grayscale, then threshold it
-    # to give it that 'black and white' paper effect
-    warpedAgain = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
-    # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
-    # warped = (warped > T).astype("uint8") * 255
-    # show the original and scanned images
-    # cv.imshow("Original", imutils.resize(orig, height = 650))
-    cv.imshow("Warped Again", cv.resize(warpedAgain, (width, height)))
+    # warpedAgain = fourPointTransform(orig, cnt.reshape(4, 2) * ratio)
+    # # convert the warped image to grayscale, then threshold it
+    # # to give it that 'black and white' paper effect
+    # warpedAgain = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
+    # # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
+    # # warped = (warped > T).astype("uint8") * 255
+    # # show the original and scanned images
+    # # cv.imshow("Original", imutils.resize(orig, height = 650))
+    # cv.imshow("Warped Again", cv.resize(warpedAgain, (width, height)))
+    # cv.waitKey(0)
+
+    # Adaptive Threshold
+    adaptiveThreshold = cv.adaptiveThreshold(warped, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 5, 2)
+    adaptiveThreshold = cv.bitwise_not(adaptiveThreshold)
+    adaptiveThreshold = cv.medianBlur(adaptiveThreshold, 3)
+    cv.imshow("Adaptive Threshold", adaptiveThreshold)
     cv.waitKey(0)
 
 if __name__ == '__main__':
