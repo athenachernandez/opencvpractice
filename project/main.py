@@ -16,29 +16,6 @@ import pytesseract
 from pytesseract import Output
 from colorama import Fore, Back, Style
 
-# from pyzbar.pyzbar import decode
-
-# def getQRData(img):
-#     try:
-#         return decode(img)
-#     except:
-#         return []
-
-# def drawPolygon(img, QRObj):
-#     if len(QRObj) == 0:
-#         return img
-#     else:
-#         for obj in QRObj:
-#             text = obj.data.deocde('utf-8')
-#             pts = obj.polygon
-#             pts = np.array([pts], np.int32)
-#             print("Before Reshaping")
-#             pts = pts.reshape((4, 1, 2))
-#             print("After Reshaping")
-#             cv.polyLines(img, [pts], True, (255, 55, 5), 2)
-#             cv.putText(img, text, (50, 50), cv.FONT_HERSHEY_PLAIN, 1.5, (255, 55, 5))
-#             return img
-
 def orderCorners(corners):
 	# initialzie a list of coordinates that will be ordered
 	# such that the first entry in the list is the top-left,
@@ -92,7 +69,7 @@ def warp(img, corners):
 	# return the warped image
 	return warped
 
-def findCnt(edged):
+def largestCnt(edged):
     cnts = cv.findContours(edged.copy(), cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     cnts = sorted(cnts, key = cv.contourArea, reverse = True)[:5]
@@ -106,114 +83,126 @@ def findCnt(edged):
         if len(approx) == 4:
             return approx
 
-def main():
-    # parse = argparse.ArgumentParser()
-    # parse.add_argument('-i', '--image', required=True, help='path to image')
-    # args = vars(parse.parse_args())
-
-    # Image path given directly instead of console argument
-    path = "images/receipt.png"
-    img = cv.imread(path) 
-    ratio = img.shape[0] / 500.0
-    orig = img.copy()
-    width = img.shape[1] # number of columns
-    height = img.shape[0] # number of rows
-    img = imutils.resize(img, height = 500)
-
-    # Resize image so functions well with OpenCV
-    # img = cv.resize(img, (1300, 800))
-    original_img = img.copy()
-
-    # Grayscale image
-    grayscaled = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    cv.imshow("Grayscaled", grayscaled)
-    cv.waitKey(0)
-
-    # Blur image
-    blurred = cv.GaussianBlur(grayscaled, (5, 5), 0)
-    cv.imshow("Blurred", blurred)
-    cv.waitKey(0)
-
-    # Edge image
-    edged = cv.Canny(blurred, 30, 50)
-    cv.imshow("Edged", edged)
-    cv.waitKey(0)
-
-    # Find paper's contour
-    cnt = findCnt(edged.copy())
-    # show the contour (outline) of the piece of paper
-    cv.drawContours(img, [cnt], -1, (0, 255, 0), 2)
-    cv.imshow("Contours", img)
-    cv.waitKey(0)
-
-    # Warp image
-    warped = warp(orig, cnt.reshape(4, 2) * ratio)
-    # convert the warped image to grayscale, then threshold it
-    # to give it that 'black and white' paper effect
-    warped = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
-    # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
-    # warped = (warped > T).astype("uint8") * 255
-    # show the original and scanned images
-    # cv.imshow("Original", imutils.resize(orig, height = 650))
-    cv.imshow("Warped", cv.resize(warped, (width, height)))
-    cv.waitKey(0)
-
-    # warpedAgain = fourPointTransform(orig, cnt.reshape(4, 2) * ratio)
-    # # convert the warped image to grayscale, then threshold it
-    # # to give it that 'black and white' paper effect
-    # warpedAgain = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
-    # # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
-    # # warped = (warped > T).astype("uint8") * 255
-    # # show the original and scanned images
-    # # cv.imshow("Original", imutils.resize(orig, height = 650))
-    # cv.imshow("Warped Again", cv.resize(warpedAgain, (width, height)))
-    # cv.waitKey(0)
-
-    # Adaptive Threshold
-    adaptiveThreshold = cv.adaptiveThreshold(warped, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 5, 2)
-    adaptiveThreshold = cv.bitwise_not(adaptiveThreshold)
-    adaptiveThreshold = cv.medianBlur(adaptiveThreshold, 3)
-    cv.imshow("Adaptive Threshold", adaptiveThreshold)
-    cv.waitKey(0)
-
-    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
-    extractedText = pytesseract.image_to_string(adaptiveThreshold)
-    print(extractedText.strip())
-
-    adaptiveThreshold = cv.cvtColor(adaptiveThreshold, cv.COLOR_GRAY2BGR)
-    data = pytesseract.image_to_data(adaptiveThreshold, output_type = Output.DICT)
-    numBoxes = len(data['level'])
-    for i in range(numBoxes):
-        x = data['left'][i]
-        y = data['top'][i]
-        width = data['width'][i]
-        height = data['height'][i]
-        cv.rectangle(adaptiveThreshold, (x, y), (x + width, y + height), (255, 0, 127), 2)
-
-    cv.imshow('Boxed Text', adaptiveThreshold)
-    cv.waitKey(0)
-
-    # QRObj = getQRData(adaptiveThreshold)
-    # qr = drawPolygon(adaptiveThreshold, QRObj)
-
-    img = cv.imread("images/qr.png")
+def qrScanner(filename):
+    """ Uses QRCodeDetector and simple geometry to generate a link from a QR Code """
+    img = cv.imread(f"images/{filename}")
     qrCodeDetector = cv.QRCodeDetector()
     decodedText, points, _ = qrCodeDetector.detectAndDecode(img)
 
     if points is not None:
         for i in range(len(points)):
             nextPointIndex = (i+1) % len(points)
-            print()
+            # 📌 Chapter 5.1: Lines and Rectangles 📌 
             cv.line(img, (int(points[i][0][0]), int(points[i][0][1])), (int(points[nextPointIndex][0][0]), int(points[nextPointIndex][0][1])), (255, 0, 0), 5)
-            print(f"{Fore.MAGENTA}Your QR code is: {decodedText}.")
+            print(f"The QR code you selected brings you to this link: {Fore.BLUE}{decodedText}{Fore.BLACK}.")
             cv.imshow("Image", img)
             cv.waitKey(0)
     else:
         print("QR code not detected :(")
 
+def textDetector(filename):
+    """ Uses Pytesseract to translate image to text and detect where text is on screen """
+    adaptiveThreshold = documentScanner(filename)
+    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
+    extractedText = pytesseract.image_to_string(adaptiveThreshold)
+    
+    print(f"{Fore.GREEN}\n{extractedText.strip()}\n")
+
+    adaptiveThreshold = cv.cvtColor(adaptiveThreshold, cv.COLOR_GRAY2BGR)
+    data = pytesseract.image_to_data(adaptiveThreshold, output_type = Output.DICT)
+    numBoxes = len(data['level'])
+    for i in range(numBoxes):
+        # 📌 Chapter 4.3: Accessing and Manipulating Pixels 📌
+        x = data['left'][i]
+        y = data['top'][i]
+        width = data['width'][i]
+        height = data['height'][i]
+        # 📌 Chapter 5.1: Lines and Rectangles 📌 
+        cv.rectangle(adaptiveThreshold, (x, y), (x + width, y + height), (168, 122, 225), 2)
+
+    cv.imshow('Boxed Text', adaptiveThreshold)
+    cv.waitKey(0)
+
+def display(title, img):
+    """ Shortens display notation for images """
+    cv.imshow(title, img)
+    cv.waitKey(0)
+
+def documentScanner(filename):
+    """ Displays step-by-step how to create a scanned document and returns scan """
+    img = cv.imread(f"images/{filename}") 
+    og = img.copy()
+    width = img.shape[1]                                    # Number of columns
+    height = img.shape[0]                                   # Number of rows
+    ratio = height / 500.0
+
+    # 📌 Chapter 6.1.3: Resizing 📌
+    img = imutils.resize(img, height = 500)                 # Resizing image is a standard practice for better results
+
+    # 📌 Chapter 6.6: Color Spaces 📌
+    grayscaled = cv.cvtColor(img, cv.COLOR_BGR2GRAY)        # Grayscale image to simplify calculations and remove redundancies
+    display("Grayscaled", grayscaled)
+
+    # 📌 Chapter 8.2: Gaussian Blurring 📌
+    blurred = cv.GaussianBlur(grayscaled, (5, 5), 0)
+    display("Blurred", blurred)
+
+    # 📌 Chapter 10.2: Canny Edge Detection 📌
+    edged = cv.Canny(blurred, 30, 50)
+    display("Edged", edged)
+
+    # 📌 Chapter 11.1 & 11.2: Contours  📌
+    cnt = largestCnt(edged.copy())                          # Finds largest contour
+    cv.drawContours(img, [cnt], -1, (168, 122, 225), 2)     # Outlines contour 
+    display("Largest contour", img)
+
+    # Warp image to aerial view
+    warped = warp(og, cnt.reshape(4, 2) * ratio)
+    warped = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
+    display("Warped", cv.resize(warped, (width, height)))
+
+    # warpedAgain = fourPointTransform(orig, cnt.reshape(4, 2) * ratio)
+    # warpedAgain = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
+    # display("Warped Again", cv.resize(warpedAgain, (width, height)))
+
+    # 📌 Chapter 9.2: Adaptive Thresholding 📌
+    adaptiveThreshold = cv.adaptiveThreshold(warped, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 5, 2)
+    # 📌 Chapter 6.3: Bitwise Operations 📌
+    adaptiveThreshold = cv.bitwise_not(adaptiveThreshold)
+    # 📌 Chapter 8.3: Median Blurring 📌
+    adaptiveThreshold = cv.medianBlur(adaptiveThreshold, 3) # Removes s&p noise
+    display("Adaptive Threshold", adaptiveThreshold)        # Adds grainy scan-feel
+
+    return adaptiveThreshold
+
+
+def main():
+    # parse = argparse.ArgumentParser()
+    # parse.add_argument('-i', '--image', required=True, help='path to image')
+    # args = vars(parse.parse_args())
+    print(f"\nHey there! My OpenCV project can broken down into 3 parts. Press any number besides 1, 2, or 3 to exit.")
+    
+    inputText = "I'm going to assume you're choosing an image inside the \'images\' folder, however, no need to type in the whole path. Enter the image file name of your choice here: "
+    while True:
+        print(f"{Fore.RED}\n\t(1) Document scanner AKA Walmart Scannable\n\t{Fore.GREEN}(2) Text detector\n\t{Fore.BLUE}(3) QR scanner")
+        selected = int(input(f"{Fore.BLACK}\nWhich would you like to try out? Enter {Fore.RED}1{Fore.BLACK}, {Fore.GREEN}2{Fore.BLACK}, or {Fore.BLUE}3{Fore.BLACK}: "))
+        if selected == 1:
+            print(f"\n🧾🧾🧾 Welcome to my {Fore.RED}document scanner{Fore.BLACK} AKA a Walmart version of Evernote's Scannable! 🧾🧾🧾\n")
+            filename = input(inputText)
+            documentScanner(filename)
+        elif selected == 2:
+            print(f"\n🔎🔎🔎 Welcome to my {Fore.GREEN}text detector{Fore.BLACK}! 🔍🔍🔍\n")
+            filename = input(inputText)
+            textDetector(filename)
+        elif selected == 3:
+            print(f"\n🔗🔗🔗 Welcome to my {Fore.BLUE}QR detector{Fore.BLACK}! 🔗🔗🔗\n")
+            filename = input(inputText)
+            qrScanner(filename)
+        else:
+            print("\nThanks for checking me out! ✌️ 😎\n")
+            break
+        cv.destroyAllWindows()
+        print(f"{Fore.BLACK}Cool! Try again or press any number besides 1, 2, or 3 to quit.")
 
 if __name__ == '__main__':
     main()
-
-# Affine
-# Live video feed; text isolation; see if text is vertical pytessaract
