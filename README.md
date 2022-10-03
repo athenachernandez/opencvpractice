@@ -1,9 +1,9 @@
 # OpenCV Project 🧾
 - Final commit: `809a9bd9de472fccb14988920784b4e6711ca35f`
 - Project located within `project` folder
-- Run script labeled `main.py`
-- Images are in the `images` folder but feel free to use others, just make sure to put them within the `images` folder
-  - Use receipts images like `receipt.png` and `receipt1.jpg` for the my document scanner and text detector
+- Run Python script labeled `main.py`
+- Images are in the `images` folder but feel free to use others, just make sure to put them within that folder
+  - Use receipt images like `receipt.png` and `receipt1.jpg` for the my document scanner and text detector
   - Use qr code images like `qr.png` for my qr scanner
 ## Independence + Curiosity 💖
 I did not use histograms (chapter 7) in my project, so I went beyond in a few aspects. 
