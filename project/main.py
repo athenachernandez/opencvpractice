@@ -1,14 +1,10 @@
 """
     Name: Athena Hernandez
     Date: September 29, 2022
-    Description: This programs scans a paper :)
+    Description: This programs scans a paper, reads text, and scans QR codes :)
 """
 
-# from pyimagesearch.transform import four_point_transform
-# from skimage.filters import threshold_local
-from cgitb import text
 import numpy as np
-import argparse
 import cv2 as cv
 import imutils
 from imutils.perspective import four_point_transform as fourPointTransform
@@ -24,8 +20,8 @@ def orderCorners(corners):
     s = corners.sum(axis = 1)                                           # Top-left = smallest sum; bottom-right = largest sum
     rect[0] = corners[np.argmin(s)]
     rect[2] = corners[np.argmax(s)]
-    
-    # Computer other points
+
+    # Compute other points
     diff = np.diff(corners, axis = 1)
     rect[1] = corners[np.argmin(diff)]
     rect[3] = corners[np.argmax(diff)]
@@ -163,9 +159,7 @@ def documentScanner(filename):
 
 
 def main():
-    # parse = argparse.ArgumentParser()
-    # parse.add_argument('-i', '--image', required=True, help='path to image')
-    # args = vars(parse.parse_args())
+    
     print(f"\nHey there! My OpenCV project can broken down into 3 parts. Press any number besides 1, 2, or 3 to exit.")
     
     inputText = "I'm going to assume you're choosing an image inside the \'images\' folder, however, no need to type in the whole path. Enter the image file name of your choice here: "
