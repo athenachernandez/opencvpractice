@@ -6,11 +6,38 @@
 
 # from pyimagesearch.transform import four_point_transform
 # from skimage.filters import threshold_local
+from cgitb import text
 import numpy as np
 import argparse
 import cv2 as cv
 import imutils
 from imutils.perspective import four_point_transform as fourPointTransform
+import pytesseract
+from pytesseract import Output
+from colorama import Fore, Back, Style
+
+# from pyzbar.pyzbar import decode
+
+# def getQRData(img):
+#     try:
+#         return decode(img)
+#     except:
+#         return []
+
+# def drawPolygon(img, QRObj):
+#     if len(QRObj) == 0:
+#         return img
+#     else:
+#         for obj in QRObj:
+#             text = obj.data.deocde('utf-8')
+#             pts = obj.polygon
+#             pts = np.array([pts], np.int32)
+#             print("Before Reshaping")
+#             pts = pts.reshape((4, 1, 2))
+#             print("After Reshaping")
+#             cv.polyLines(img, [pts], True, (255, 55, 5), 2)
+#             cv.putText(img, text, (50, 50), cv.FONT_HERSHEY_PLAIN, 1.5, (255, 55, 5))
+#             return img
 
 def orderCorners(corners):
 	# initialzie a list of coordinates that will be ordered
@@ -85,7 +112,7 @@ def main():
     # args = vars(parse.parse_args())
 
     # Image path given directly instead of console argument
-    path = "images/practice.jpg"
+    path = "images/receipt.png"
     img = cv.imread(path) 
     ratio = img.shape[0] / 500.0
     orig = img.copy()
@@ -148,6 +175,42 @@ def main():
     adaptiveThreshold = cv.medianBlur(adaptiveThreshold, 3)
     cv.imshow("Adaptive Threshold", adaptiveThreshold)
     cv.waitKey(0)
+
+    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
+    extractedText = pytesseract.image_to_string(adaptiveThreshold)
+    print(extractedText.strip())
+
+    adaptiveThreshold = cv.cvtColor(adaptiveThreshold, cv.COLOR_GRAY2BGR)
+    data = pytesseract.image_to_data(adaptiveThreshold, output_type = Output.DICT)
+    numBoxes = len(data['level'])
+    for i in range(numBoxes):
+        x = data['left'][i]
+        y = data['top'][i]
+        width = data['width'][i]
+        height = data['height'][i]
+        cv.rectangle(adaptiveThreshold, (x, y), (x + width, y + height), (255, 0, 127), 2)
+
+    cv.imshow('Boxed Text', adaptiveThreshold)
+    cv.waitKey(0)
+
+    # QRObj = getQRData(adaptiveThreshold)
+    # qr = drawPolygon(adaptiveThreshold, QRObj)
+
+    img = cv.imread("images/qr.png")
+    qrCodeDetector = cv.QRCodeDetector()
+    decodedText, points, _ = qrCodeDetector.detectAndDecode(img)
+
+    if points is not None:
+        for i in range(len(points)):
+            nextPointIndex = (i+1) % len(points)
+            print()
+            cv.line(img, (int(points[i][0][0]), int(points[i][0][1])), (int(points[nextPointIndex][0][0]), int(points[nextPointIndex][0][1])), (255, 0, 0), 5)
+            print(f"{Fore.MAGENTA}Your QR code is: {decodedText}.")
+            cv.imshow("Image", img)
+            cv.waitKey(0)
+    else:
+        print("QR code not detected :(")
+
 
 if __name__ == '__main__':
     main()
